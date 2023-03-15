@@ -9,8 +9,8 @@ locals {
 
   # Map of Cloudflare DNS zones to be managed
   cloudflare_zones = {
-    "example_com"       = "example.com"
-    "foobar_xyz" = "foobar.xyz"
+    "example_com" = "example.com"
+    "foobar_xyz"  = "foobar.xyz"
   }
 }
 
