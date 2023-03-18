@@ -1,5 +1,5 @@
 
-# TF-CLOUDFLARE-DNS
+# tf-cloudflare-dns
 
 Example repository for managing Cloudflare domain DNS zone records with Terraform. Repository contains ready-to-use Terraform module with examples, as well as a GitHub workflow template for deploying the configuration.
 
@@ -14,11 +14,11 @@ Cloudflare also offers [a tool](https://github.com/cloudflare/cf-terraforming) f
 - Terraform remote backend configuration to store the state file
   - In this repository, `azurerm` provider & Azure Storage Account is used for the remote state
   - Azure remote backend connection is set up with OIDC following the [GitHub instructions](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure)
-- Migration decision, one of the following:
-  - Do not migrate existing, use Terraform only for new zones/records
-  - Import existing records to Terraform state
-  - **Recommended approach for easy migration**:
-    - Create "duplicate/copy" records with Terraform for every zone and validate the results. Repository contains Terraform local `record_name_prefix` in `terraform/main.tf` which can be used to easily inject a prefix (.e.g `test-`) to every record created with Terraform
+- Migration decision:
+  - Option 1: Do not migrate existing, use Terraform only for new zones/records
+  - Option 2: Import existing records to Terraform state
+  - Option 3 (**Recommended approach for easy migration**):
+    - Create "duplicate/copy" records with Terraform for every zone and validate the results. Repository contains Terraform local `record_name_prefix` in `terraform/main.tf` which can be used to easily inject a prefix (e.g `test-`) to every record created with Terraform
     - After confirming the records are created correctly, delete all records from the zone (e.g. from the CF dashboard), set the Terraform local value `record_name_prefix` back to empty string ("") and deploy again --> no state file importing needed
 
 ## How to use

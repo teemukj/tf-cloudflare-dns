@@ -36,6 +36,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Log in to Azure with OIDC
     - name: Log in to Azure using OIDC
       uses: azure/login@v1
       with:
@@ -43,11 +44,13 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+    # Setup Terraform on the pipeline agent
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
         terraform_version: ${{ env.TERRAFORM_VERSION }}
     
+    # Initialize Terraform
     - name: Terraform Init
       id: init
       run: terraform init
@@ -57,13 +60,16 @@ jobs:
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         ARM_USE_OIDC: true
     
+    # Combine all Terraform variable value files into a single file
     - name: Combine all 'tfvars' files
       run: cat ./records/*.tfvars >> ./terraform.tfvars
     
+    # Validate Terrafrom configuration
     - name: Terraform Validate
       id: validate
       run: terraform validate
     
+    # Produce Terraform plan file
     - name: Terraform Plan
       id: plan
       run: terraform plan -no-color --out=out.tfplan
@@ -73,6 +79,7 @@ jobs:
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         ARM_USE_OIDC: true
     
+    # Publish the plan file as an artifact
     - name: Upload the plan
       uses: actions/upload-artifact@v3
       with:
@@ -85,6 +92,8 @@ jobs:
     name: Terraform apply
     needs: [ plan ]
     runs-on: ubuntu-latest
+    
+    # Only auto-trigger the workflow from main branch changes
     if: github.ref == 'refs/heads/main'
     defaults:
       run:
@@ -93,6 +102,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    # Log in to Azure with OIDC
     - name: Log in to Azure using OIDC
       uses: azure/login@v1
       with:
@@ -100,11 +110,13 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+    # Setup Terraform on the pipeline agent
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
       with:
         terraform_version: ${{ env.TERRAFORM_VERSION }}
 
+    # Initialize Terraform
     - name: Terraform Init
       id: init
       run: terraform init
@@ -114,12 +126,14 @@ jobs:
         ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         ARM_USE_OIDC: true
 
+    # Download the plan file artifact
     - name: Download the plan
       uses: actions/download-artifact@v3
       with:
         name: tfplan
         path: ${{ env.TERRAFORM_WORKDIR }}
 
+    # Apply the plan file
     - name: Apply the plan
       id: apply
       run: terraform apply -no-color -auto-approve out.tfplan
