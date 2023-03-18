@@ -1,0 +1,144 @@
+# Deployment pipeline
+name: Cloudflare deployment
+
+# Set workflow triggers
+on: 
+  workflow_dispatch:
+  push:
+    branches:    
+      - dev
+      - main
+    paths:
+      - '.github/workflows/deployment.yml'
+      - 'terraform/**'
+
+# OIDC permissions
+permissions:
+  id-token: write
+  contents: read
+
+# Set pipeline agent environment variables
+env:
+  TERRAFORM_VERSION: 1.4.0
+  TERRAFORM_WORKDIR: terraform
+  TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+
+  # Terraform Plan job
+  plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TERRAFORM_WORKDIR }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    # Log in to Azure with OIDC
+    - name: Log in to Azure using OIDC
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    # Setup Terraform on the pipeline agent
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+    
+    # Initialize Terraform
+    - name: Terraform Init
+      id: init
+      run: terraform init
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
+    
+    # Combine all Terraform variable value files into a single file
+    - name: Combine all 'tfvars' files
+      run: cat ./records/*.tfvars >> ./terraform.tfvars
+    
+    # Validate Terrafrom configuration
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate
+    
+    # Produce Terraform plan file
+    - name: Terraform Plan
+      id: plan
+      run: terraform plan -no-color --out=out.tfplan
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
+    
+    # Publish the plan file as an artifact
+    - name: Upload the plan
+      uses: actions/upload-artifact@v3
+      with:
+        name: tfplan
+        path: ${{ env.TERRAFORM_WORKDIR }}/out.tfplan
+
+
+  # Terraform Apply job
+  apply:
+    name: Terraform apply
+    needs: [ plan ]
+    runs-on: ubuntu-latest
+    
+    # Only auto-trigger the workflow from main branch changes
+    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: ${{ env.TERRAFORM_WORKDIR }}
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    # Log in to Azure with OIDC
+    - name: Log in to Azure using OIDC
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    # Setup Terraform on the pipeline agent
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+    # Initialize Terraform
+    - name: Terraform Init
+      id: init
+      run: terraform init
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
+
+    # Download the plan file artifact
+    - name: Download the plan
+      uses: actions/download-artifact@v3
+      with:
+        name: tfplan
+        path: ${{ env.TERRAFORM_WORKDIR }}
+
+    # Apply the plan file
+    - name: Apply the plan
+      id: apply
+      run: terraform apply -no-color -auto-approve out.tfplan
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_USE_OIDC: true
