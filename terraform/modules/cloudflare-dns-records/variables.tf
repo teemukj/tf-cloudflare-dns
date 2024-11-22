@@ -1,5 +1,5 @@
 variable "records" {
-  type        = map(any)
+  type        = any
   description = "Map of DNS records to create"
 }
 
