@@ -13,7 +13,7 @@ resource "cloudflare_record" "record" {
 
   name     = "${var.name_prefix}${try(each.value.name, var.cloudflare_zone_name)}"
   type     = each.value.type
-  value    = each.value.value
+  content  = each.value.value
   zone_id  = var.cloudflare_zone_id
   ttl      = try(each.value.ttl, 1)
   proxied  = try(each.value.proxied, false)

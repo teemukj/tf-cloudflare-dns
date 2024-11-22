@@ -30,8 +30,6 @@ Examples of syntax/usage are available in the repository.
 1) Set GitHub repository secrets:
     - Cloudflare API token as `CLOUDFLARE_API_TOKEN`
     - If using Azure remote backend, also set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` secrets
-2) In `terraform/main.tf`, set your domain names / dns zones to the Terraform local `cloudflare_managed_zones` list
-    - Based on this local, Terraform will fetch data from the zones
-3) For each zone, use one of the example TF files `zone_example_com.tf` or `zone_foobar_xyz.tf` as a template to configure your zone and records
-4) Deploy using the included GitHub workflow
+2) In `terraform/records.tf`, define your dns zone objects and records in `records` local
+3) Deploy using the included GitHub workflow
     - Workflow is set to automatically trigger from `dev`and `main` branches. `dev` branch trigger will only run the Terraform plan job and hence can be used to inspect the changes. `main` branch will trigger will run plan and apply jobs.
